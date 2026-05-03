@@ -1,0 +1,58 @@
+[package]
+name = "orgd"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.77.2"
+description = "Local long-lived daemon for systema-claude: file watcher, document index, PTYs, agent workers, and routine runner. Speaks /v1/* HTTP+WS to the desktop shell."
+license = "MIT"
+repository = "https://github.com/bjb2/systema-claude"
+
+[[bin]]
+name = "orgd"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+axum = { version = "0.7", features = ["ws", "macros"] }
+tower = "0.5"
+tower-http = { version = "0.5", features = ["trace"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+portable-pty = "0.8"
+fs4 = "0.8"
+dirs = "5"
+rand = "0.8"
+hex = "0.4"
+notify = "6"
+walkdir = "2"
+regex = "1"
+once_cell = "1"
+serde_yaml = "0.9"
+base64 = "0.22"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1"
+thiserror = "1"
+futures-util = "0.3"
+sysinfo = "0.32"
+
+[dev-dependencies]
+# Tests talk to http://127.0.0.1 only; no TLS needed. Dropping rustls
+# saves a large compile (~20 crates) and avoids LNK1171 memory pressure
+# on Windows during parallel linking.
+reqwest = { version = "0.12", features = ["json"], default-features = false }
+tempfile = "3"
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.24"
+futures-util = "0.3"
+urlencoding = "2"
+base64 = "0.22"
+
+# Strip full debug info from the test profile — parallel test linking
+# was OOMing rustc/link.exe under default debuginfo=2.
+[profile.test]
+debug = "line-tables-only"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["processthreadsapi", "handleapi", "winnt"] }
