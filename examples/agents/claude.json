@@ -1,0 +1,6 @@
+{
+  "label": "Claude",
+  "launchCmd": "claude",
+  "printArgs": ["--print"],
+  "promptQuote": "single"
+}

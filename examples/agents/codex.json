@@ -1,0 +1,7 @@
+{
+  "label": "Codex",
+  "launchCmd": "codex",
+  "printArgs": ["-p"],
+  "promptQuote": "double",
+  "submitKey": "shift+enter"
+}

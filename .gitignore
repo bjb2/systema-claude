@@ -1,0 +1,36 @@
+# Build artifacts
+/target/
+**/target/
+/dist/
+**/dist/
+node_modules/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Tauri
+src-tauri/gen/
+src-tauri/target/
+
+# Logs
+*.log
+build.log
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Tool artifacts
+.claude/scheduled_tasks.lock
+
+# Local seed runs (users author their own seed; runs are not artifacts to track)
+seed/routines/runs/
