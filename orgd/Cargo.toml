@@ -1,6 +1,6 @@
 [package]
 name = "orgd"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.77.2"
 description = "Local long-lived daemon for systema-claude: file watcher, document index, PTYs, agent workers, and routine runner. Speaks /v1/* HTTP+WS to the desktop shell."

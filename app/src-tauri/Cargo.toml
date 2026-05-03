@@ -1,6 +1,6 @@
 [package]
 name = "systema-claude-app"
-version = "0.1.0"
+version = "0.1.1"
 description = "systema-claude desktop shell — Tauri application that pairs with the orgd daemon to present a workspace UI."
 authors = ["Bryan Bartley"]
 edition = "2021"
