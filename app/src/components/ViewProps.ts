@@ -8,8 +8,6 @@ export interface ViewProps {
   selectedDoc: OrgDocument | null;
   setSelectedDoc: (d: OrgDocument | null) => void;
   onSpawnClaude?: (path: string, title: string, notes?: string, agentId?: string) => void;
-  onTriggerObserver?: () => void;
-  observerRunning?: boolean;
   onOpenUrl?: (url: string) => void;
   activePaths?: Set<string>;
 }

@@ -35,7 +35,7 @@ function normPath(path: string): string {
   return path.replace(/\\/g, "/").toLowerCase();
 }
 
-export default function InboxView({ docs, theme, orgRoot, selectedDoc, setSelectedDoc, onSpawnClaude, onTriggerObserver, observerRunning, onOpenUrl, activePaths }: ViewProps) {
+export default function InboxView({ docs, theme, orgRoot, selectedDoc, setSelectedDoc, onSpawnClaude, onOpenUrl, activePaths }: ViewProps) {
   const [folder, setFolder] = useState("all");
   const [synthesizing, setSynthesizing] = useState<Record<string, SynthesizeState>>({});
   const hasActive = activePaths != null && activePaths.size > 0;
@@ -108,23 +108,6 @@ export default function InboxView({ docs, theme, orgRoot, selectedDoc, setSelect
               {f}
             </button>
           ))}
-          {onTriggerObserver && (
-            <button
-              onClick={onTriggerObserver}
-              disabled={observerRunning}
-              title={observerRunning ? "Observer already running" : "Run observer agent"}
-              className="px-2 py-0.5 text-xs rounded ml-auto"
-              style={{
-                background: observerRunning ? "transparent" : theme.accentMuted,
-                color: observerRunning ? theme.textDim : theme.accent,
-                border: `1px solid ${theme.border}`,
-                cursor: observerRunning ? "not-allowed" : "pointer",
-                opacity: observerRunning ? 0.5 : 1,
-              }}
-            >
-              ヽ༼ຈل͜ຈ༽ﾉ
-            </button>
-          )}
         </div>
         <DocList
           docs={inbox}

@@ -1,0 +1,18 @@
+{
+  "defaultAgent": "claude",
+  "agents": {
+    "claude": {
+      "label": "Claude",
+      "launchCmd": "claude",
+      "printArgs": ["--print"],
+      "promptQuote": "single"
+    },
+    "codex": {
+      "label": "Codex",
+      "launchCmd": "codex",
+      "printArgs": ["-p"],
+      "promptQuote": "double",
+      "submitKey": "shift+enter"
+    }
+  }
+}

@@ -211,26 +211,6 @@ export default function App() {
     addTile(path, title, orgRoot, notes, agentId);
   }, [addTile, orgRoot]);
 
-  const observerRunning = useMemo(
-    () => swarmTiles.some(t => t.title === "observer"),
-    [swarmTiles],
-  );
-
-  const handleTriggerObserver = useCallback(() => {
-    if (observerRunning) return;
-    setSwarmTiles(prev => {
-      if (prev.length >= MAX_SLOTS) return prev;
-      return [...prev, {
-        id: nextTileId(),
-        title: "observer",
-        slot: prev.length,
-        taskPath: `${orgRoot}/setup/agents/observer.md`,
-        projectRoot: orgRoot,
-      }];
-    });
-    setView("swarm");
-  }, [observerRunning, orgRoot]);
-
   const handleTileFocus = useCallback((id: string) => {
     setSwarmTiles(prev => {
       const t = prev.find(x => x.id === id);
@@ -301,8 +281,6 @@ export default function App() {
   const viewProps = {
     docs, theme, orgRoot, selectedDoc, setSelectedDoc,
     onSpawnClaude,
-    onTriggerObserver: handleTriggerObserver,
-    observerRunning,
     onOpenUrl: (url: string) => {
       invoke("open_external_url", { url }).catch(console.error);
     },
@@ -369,8 +347,6 @@ export default function App() {
               onTileClose={handleTileClose}
               onAddShell={handleAddShell}
               onResetLayout={handleResetLayout}
-              onTriggerObserver={handleTriggerObserver}
-              observerRunning={observerRunning}
               onTilePtyReady={handleTilePtyReady}
               onTileWorkerReady={handleTileWorkerReady}
               agentRegistry={agentRegistry}

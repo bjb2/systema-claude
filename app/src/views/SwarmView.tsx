@@ -15,8 +15,6 @@ interface Props {
   onTileClose: (id: string) => void;
   onAddShell: () => void;
   onResetLayout: () => void;
-  onTriggerObserver?: () => void;
-  observerRunning?: boolean;
   onTilePtyReady?: (id: string, ptyId: number) => void;
   onTileWorkerReady?: (id: string, workerId: number) => void;
   agentRegistry?: AgentRegistry | null;
@@ -39,7 +37,7 @@ function gridTemplate(count: number): { cols: string; rows: string } {
 
 export default function SwarmView({
   theme, tiles, visible: _visible, focusedSlot, onTileFocus, onTileClose, onAddShell, onResetLayout,
-  onTriggerObserver, observerRunning, onTilePtyReady, onTileWorkerReady,
+  onTilePtyReady, onTileWorkerReady,
   agentRegistry, onAddAgent,
 }: Props) {
   const turnCompleteHooks = resolveTurnCompleteHooks(agentRegistry ?? null);
@@ -119,16 +117,6 @@ export default function SwarmView({
               </button>
             )
         }
-        {onTriggerObserver && (
-          <button
-            onClick={onTriggerObserver}
-            disabled={observerRunning || atCap}
-            title={observerRunning ? "Observer already running" : atCap ? "Swarm at capacity" : "Run observer agent"}
-            style={spawnDisabledStyle(observerRunning || atCap)}
-          >
-            ヽ༼ຈل͜ຈ༽ﾉ
-          </button>
-        )}
       </div>
 
       {/* Slot grid */}
@@ -145,7 +133,6 @@ export default function SwarmView({
               gap: 12,
             }}
           >
-            <span style={{ fontSize: 36, opacity: 0.2 }}>ヽ༼ຈل͜ຈ༽ﾉ</span>
             <p style={{ fontSize: 13, color: theme.textDim, margin: 0 }}>no agents running</p>
             <p style={{ fontSize: 11, color: theme.textDim, margin: 0 }}>
               use <span style={{ color: theme.accent }}>❯</span> on a task to spawn one, or{" "}
