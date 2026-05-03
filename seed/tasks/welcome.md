@@ -194,4 +194,4 @@ When all five phases are done:
 
 ## Lineage
 
-This welcome task adapts the structure of `vincitamore/claude-org-template/ONBOARDING.md` (Alex's onboarding script for the opus-tree template), reworked for systema-claude's posture: principles over prescriptions, harness as central feature, disagreement-as-protocol made explicit. We learned from Alex's pattern; the adaptations (Phase 4 disagreement moment, Phase 5 harness demonstration, the four-principle starter set rather than seven) are our own.
+This welcome task adapts the structure of [`vincitamore/claude-org-template/ONBOARDING.md`](https://github.com/vincitamore/claude-org-template/blob/master/ONBOARDING.md) — credit there for the interview-driven shape. The adaptations specific to systema-claude (Phase 4 disagreement-as-protocol, Phase 5 live harness demonstration, the four-principle starter set instead of seven) are this fork's own.

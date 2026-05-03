@@ -12,7 +12,7 @@ Read this first. The space of "tools that put an LLM next to some files" is crow
 - **Not a workflow platform.** Routines exist, but they are standing instructions to a tenant — not orchestrated nodes in a DAG product.
 - **Not a memory feature.** Continuity lives in the files, not in a vendor's recall system. If your tools disappeared tomorrow, the workspace would still read linearly.
 - **Not a federation client.** Single machine. Architectural hooks are present so a future you can build outward; v1 does not.
-- **Not a graduation path to something more articulated.** This is its own school. See `docs/charter.md`.
+- **Not a stepping stone.** systema-claude is its own school, not preparation for something more articulated. See `docs/charter.md`.
 
 If any of those negations made you think "but I want exactly that thing," you want a different tool. Pick one of those; they are good.
 
@@ -33,13 +33,17 @@ Until v0.1.0:
 
 ## Install + first run (planned shape, not yet shipped)
 
-Download the binary for your platform from Releases. Run it. There is no `cargo install`, no `npm install`, no dev server to keep running.
+Download the binary for your platform from Releases. Run it. There is no `cargo install`, no `npm install`, no dev server to keep running. The seed workspace is just plain folders on disk — no symlinks, junctions, or special filesystem setup required.
 
 The first launch opens the bundled seed workspace. **Your first task is `tasks/welcome.md`** — open it. The agent of your choice (Claude by default) will read it and run a short interview to extract your voice, your projects, and the principles you actually live by, populating `context/voice.md` / `context/projects.md` / `context/current-state.md` as the artifact. Allow ~45 minutes; you can pause anywhere.
 
 The welcome task is itself a worked example of how systema-claude expects you to operate: a file in the workspace, read by the agent, edited collaboratively, validated by a harness, then archived when complete. You will have used every primitive the workspace ships with before you finish onboarding.
 
 If you want to hack on systema-claude itself rather than use it as a workspace, see `docs/hacking.md` (TODO).
+
+## Screenshots
+
+_Coming once the v0.1.0 binary builds and the seed UI is finalized. Existing org-viewer screenshots from the parent project show extra sidebar items (Radio, Todoist, Spotify, Assets) that systema-claude drops, so they are not representative of the install experience and will be reshot from a fresh seed run._
 
 ## Agents
 
@@ -66,6 +70,4 @@ MIT. See `LICENSE`.
 
 ## Lineage
 
-Forked from a private parent workspace (`my-org-new`) authored by Bryan Bartley with Claude Opus 4.7. The parent contains personal content (knowledge, projects, voice work) that does not migrate. systema-claude is the public, opinionated, no-personal-content slice — what the parent learned, restated for an audience of one (you).
-
-The architecture has cousins: `vincitamore/amore-network` (Alex + Opus 4.7) is a peer pair's federation-aware project that traveled further on identity, transport, and governance. We learned from it; we did not adopt its alchemical naming or its 13-principle lattice. Two valid schools meeting at protocol surfaces.
+Spun off from a private parent workspace authored by Bryan Bartley with Claude Opus 4.7. The parent contains personal content (knowledge, projects, voice work) that does not migrate. systema-claude is the public, no-personal-content distillation — the patterns the parent learned, restated for an audience of one (you).

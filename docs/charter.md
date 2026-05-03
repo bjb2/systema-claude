@@ -1,6 +1,6 @@
 # Charter
 
-systema-claude is a school, not an on-ramp. This document explains what that commits the project to.
+systema-claude is its own school. This document explains what that commits the project to.
 
 ## The naming
 
@@ -22,9 +22,8 @@ The name is load-bearing. It commits this project to the same posture in softwar
 - Not a workflow platform.
 - Not a memory feature.
 - Not a federation client.
-- **Not a graduation path to something more articulated.**
 
-That last one matters. An earlier draft of this project framed systema-claude as preparation for a more developed practice elsewhere — the cathedral-and-on-ramp framing. That framing was wrong and got corrected on 2026-05-02. A Systema practitioner does not graduate to karate; they do not graduate at all. Operating in this workspace prepares you to participate in any federation later — including peer projects like `vincitamore/amore-network` — *on your own terms*. You bring your structure; you do not adopt the host's katas.
+systema-claude is not preparation for some more developed practice. A Systema practitioner does not graduate to karate; they do not graduate at all. The workspace you set up here is the practice. If you later want to participate in a federation, exchange documents with another user's workspace, or adopt patterns from a different school, you do that on your own terms — bringing your own structure, not adopting someone else's.
 
 ## The verification harness as the central feature
 
@@ -42,7 +41,7 @@ Cost: low. Payback: the first time your work meets another user's work. Or the f
 
 A newcomer who has spent any time with chat-LLMs has likely absorbed assistant-mode servility as the default. systema-claude's job, after teaching files-as-substrate, may be uninstalling that default.
 
-Onboarding will eventually point to a real commit demonstrating the project disagreeing with itself and improving. Until that commit exists in this fork, the placeholder is: read `inbox/decisions/` files in the parent workspace and notice that decisions are resolved *by changing the decision file in place*, with the prior reasoning preserved. Disagreement is structural. Consensus is suspect.
+If you and the agent agree on everything during a session, one of three things is true: the work was trivial, the agent is deferring, or both of you are guessing. None of those are the result you want. Build the habit of pushing back, and expect the agent to push back on you. The pattern this workspace uses for this is to resolve decisions *by changing the decision file in place* with the prior reasoning preserved — disagreement and revision become structural, not ad hoc.
 
 ## Architecture-inscribes-profile
 
@@ -61,8 +60,6 @@ The single test for whether this project is honoring its anchor:
 
 If the latter — if the seed routine reads as a kata to copy rather than a worked example to learn-from-then-discard, if the principles read as commandments rather than starting points to argue with, if the agent configs read as the right configs rather than two examples among many — the project has drifted into kata-school territory. The fix is not better templates. The fix is fewer templates.
 
-## Lineage and credit
+## Lineage
 
-Forked from `my-org-new` (Bryan Bartley + Claude Opus 4.7). Influenced by `vincitamore/amore-network` (Alex + Opus 4.7) — a peer pair's project that carried each shared concept several levels further on identity, transport, and governance. We learned from amore's articulation; we did not adopt its alchemical naming or 13-principle lattice. Two valid schools meeting at protocol surfaces.
-
-The systema-as-martial-art framing was developed in conversation between Bryan and Claude on 2026-05-02 and corrected the same day to remove the "graduation path to cathedral" framing. The correction is the example, not the exception.
+Spun off from a private parent workspace authored by Bryan Bartley with Claude Opus 4.7. The parent contained personal content (knowledge, projects, voice work) that does not migrate. systema-claude is the public, no-personal-content distillation — the patterns the parent learned, restated for an audience of one (you).
