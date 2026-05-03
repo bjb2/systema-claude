@@ -69,6 +69,23 @@ The harness is the central feature, in the sense that it's the discipline the pr
 
 The reference implementation is `examples/harness/validate-frontmatter.py`. It walks the workspace and reports any markdown file with missing required frontmatter fields. It self-tests against a pair of valid + invalid fixtures. The pattern (a contract, a passing example, a failing example, a runner) is what you should copy when you write your own contracts.
 
+## Maintenance hooks
+
+Two optional Claude Code hooks ship in `examples/hooks/`. Both are zero-dependency Python (no PyYAML, no pip install).
+
+- **`maintenance-check.py`** — Claude Code `Stop` hook. Prompts the agent to capture anything worth preserving from the session before it ends.
+- **`session-start.py`** — Claude Code `SessionStart` hook. Loads workspace orientation (tasks, inbox counts, due reminders, voice doc) into the agent's context on every fresh session.
+
+Install both:
+
+```
+python scripts/install-hooks.py
+```
+
+The installer copies the scripts into `~/.claude/hooks/` and prints the JSON snippet to merge into your `~/.claude/settings.json`. After updating settings, restart Claude Code.
+
+These hooks are optional — the workspace works without them. They exist because the discipline systema-claude tries to teach (capture immediately, orient before acting) needs structural enforcement, not memory. Skip them for one-off use; install them for daily operation.
+
 ## Philosophy (one paragraph)
 
 systema-claude is named for the martial art Systema, whose discipline is **principles over prescriptions, effectiveness-checking over technique-collecting**. The seed ships no prescribed routine templates, no prescribed knowledge taxonomy, no prescribed agent configurations. It ships equipment, labeled. You develop your own practice. The harness substitutes for the second pair of eyes a single-user workspace lacks by definition.

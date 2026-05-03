@@ -9,6 +9,10 @@ node_modules/
 *.so
 *.dylib
 
+# Python
+__pycache__/
+*.pyc
+
 # Tauri
 src-tauri/gen/
 src-tauri/target/

@@ -99,7 +99,18 @@ Run `python examples/harness/validate-frontmatter.py` to check.
 
 ## Hooks (automation)
 
-The maintenance hook fires at session end and asks: did anything happen this session worth capturing? It is the workspace's immune system. If it hasn't been installed yet, see `docs/hooks.md` (TODO in the seed; available in the released binary).
+Two Claude Code hooks ship with systema-claude — both optional but strongly recommended for daily operation:
+
+- **`Stop` (maintenance-check)** — fires at session end. Scans the workspace for what changed this session and prompts you to capture anything worth preserving (new knowledge, status changes, ideas, decisions, automation candidates). If nothing applies, you reply `"No maintenance needed."` and it releases. Without this, capture relies on memory.
+- **`SessionStart`** — fires when a fresh Claude Code session starts. Reads frontmatter across `tasks/`, `inbox/`, `knowledge/`, `reminders/`, `context/` and emits a concise orientation block so a fresh agent has the workspace state in context without having to read 50 files.
+
+Install both at once from the repo root:
+
+```
+python scripts/install-hooks.py
+```
+
+The installer copies the scripts into `~/.claude/hooks/` and prints the snippet to merge into `~/.claude/settings.json`. After updating settings, restart Claude Code. Source for both hooks lives at `examples/hooks/`.
 
 ---
 
