@@ -20,13 +20,15 @@ If you'd rather hack on systema-claude itself, clone the repo and read `docs/hac
 
 ## What you'll see
 
-(Screenshots from the v0.1.0 build coming once the seed UI settles.)
+![systema-claude dashboard, v0.1.0 against the bundled seed](docs/screenshots/dashboard-v0.1.0.png)
 
-A left-rail navigator with Dashboard / Tasks / Knowledge / Inbox / Graph / Code / Swarm / Routines / Settings. The dashboard summarises your active tasks, blocked items, knowledge entries, and inbox. Tasks shows your task files grouped by project. Knowledge is your distilled-insights library, also grouped by project tag. Graph visualises the wikilink connections between everything in the workspace. Code is a CodeMirror 6 editor that opens any file in the workspace and saves through the daemon. Swarm spawns up to six agent terminals in a slot grid, each with its own working directory and prompt. Routines is a YAML editor + drag-connect Flow editor for the cron-driven background runner.
+A left-rail navigator with Dashboard / Tasks / Knowledge / Inbox / Graph / Code / Swarm / Routines / Settings. The dashboard summarises your active tasks, blocked items, knowledge entries, and inbox; an Org Health panel below flags orphan articles, broken wikilinks, and frontmatter warnings. Tasks shows your task files grouped by project. Knowledge is your distilled-insights library, also grouped by project tag. Graph visualises the wikilink connections between everything in the workspace. Code is a CodeMirror 6 editor that opens any file in the workspace and saves through the daemon. Swarm spawns up to six agent terminals in a slot grid, each with its own working directory and prompt. Routines is a YAML editor + drag-connect Flow editor for the cron-driven background runner.
 
-A right-side terminal toggles open with backtick.
+A right-side terminal toggles open with backtick. A Pomodoro timer lives at the bottom of the sidebar.
 
 Themes cycle with `t`. Search palette is `Ctrl+K`. Most views have keyboard shortcuts (numbers and letters from the sidebar).
+
+The screenshot above is the v0.1.0 build pointed at the bundled seed: 1 active task (the welcome interview), the routines folder shows the format-contract example, and everything is an "orphan" because the seed ships with no inter-document links — that's expected; the user develops the link graph through use.
 
 ## Agents
 
@@ -72,6 +74,54 @@ The reference implementation is `examples/harness/validate-frontmatter.py`. It w
 systema-claude is named for the martial art Systema, whose discipline is **principles over prescriptions, effectiveness-checking over technique-collecting**. The seed ships no prescribed routine templates, no prescribed knowledge taxonomy, no prescribed agent configurations. It ships equipment, labeled. You develop your own practice. The harness substitutes for the second pair of eyes a single-user workspace lacks by definition.
 
 Full charter (including why "no graduation path," what disagreement-as-protocol means in practice, and the architecture-inscribes-profile remedies the project tries to follow) is at `docs/charter.md`.
+
+## Build from source
+
+If you'd rather not run an unsigned binary (Windows Defender will flag the download until the project gets a code-signing certificate), build it yourself:
+
+**Prerequisites**
+
+- [Rust toolchain](https://rustup.rs/) (1.77.2 or newer)
+- [Node.js](https://nodejs.org/) 18+ and npm
+- Windows: WebView2 Runtime — preinstalled on Windows 10 (1803+) and Windows 11; download from Microsoft if missing.
+- macOS / Linux: standard Tauri prerequisites — see [Tauri's setup guide](https://v2.tauri.app/start/prerequisites/).
+
+**Clone + build**
+
+```bash
+git clone https://github.com/bjb2/systema-claude.git
+cd systema-claude/app
+npm install
+npx tauri build
+```
+
+The build runs in two steps: first `cargo build --release` for the orgd sidecar daemon (script: `app/scripts/build-orgd.mjs`), then the Tauri build for the desktop shell. First build takes 5–10 minutes depending on your machine.
+
+**Outputs land at:**
+
+- `app/src-tauri/target/release/systema-claude-app.exe` — the standalone binary you built yourself.
+- `app/src-tauri/target/release/bundle/msi/systema-claude_0.1.0_x64_en-US.msi` — your own MSI installer.
+- `app/src-tauri/target/release/bundle/nsis/systema-claude_0.1.0_x64-setup.exe` — your own NSIS installer.
+
+The binary you produce is identical to the binary in the published release except for the build timestamp. It is still unsigned (signing requires a code-signing certificate from a CA — outside the scope of this project), but you have full provenance: you built it from the source you can read.
+
+**Run against the bundled seed:**
+
+Copy the built `systema-claude-app.exe` to `seed/` and double-click it (the daemon will pick `seed/` as the workspace because that's where it finds `CLAUDE.md`). Or set `ORG_ROOT` explicitly:
+
+```bash
+ORG_ROOT="C:/path/to/your/workspace" ./app/src-tauri/target/release/systema-claude-app.exe
+```
+
+**Tests:**
+
+```bash
+cd orgd && cargo test    # 26 tests across 8 suites
+cd ../app && npx tsc      # frontend type-check
+python examples/harness/validate-frontmatter.py seed
+python examples/harness/validate-frontmatter.py examples/harness/fixtures/valid    # PASS
+python examples/harness/validate-frontmatter.py examples/harness/fixtures/invalid  # FAIL with violation
+```
 
 ## License
 
