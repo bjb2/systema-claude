@@ -241,6 +241,48 @@ fn check_command_on_path(name: String) -> bool {
         .unwrap_or(false)
 }
 
+/// Slug a cwd for Claude's per-project transcript directory. Mirrors
+/// Claude Code's encoding: `:`, `\`, `/` → `-`.
+fn claude_project_slug(cwd: &str) -> String {
+    cwd.chars()
+        .map(|c| if c == ':' || c == '\\' || c == '/' { '-' } else { c })
+        .collect()
+}
+
+fn claude_projects_dir(cwd: &str) -> Result<PathBuf, String> {
+    let home = std::env::var_os("USERPROFILE")
+        .or_else(|| std::env::var_os("HOME"))
+        .ok_or_else(|| "no home directory in env".to_string())?;
+    Ok(PathBuf::from(home).join(".claude").join("projects").join(claude_project_slug(cwd)))
+}
+
+/// List every Claude session present in `cwd`'s transcript directory as
+/// `(session_id, mtime_unix_ms)` tuples. Used by `AgentTile` to snapshot the
+/// pre-spawn baseline and to detect when its own jsonl appears.
+///
+/// Returns an empty list (Ok) — not an error — when the directory does not
+/// yet exist; this is the steady-state for a fresh cwd before Claude has
+/// written any transcript.
+#[tauri::command]
+fn list_claude_sessions(cwd: String) -> Result<Vec<(String, i64)>, String> {
+    let dir = claude_projects_dir(&cwd)?;
+    let entries = match std::fs::read_dir(&dir) {
+        Ok(it) => it,
+        Err(_) => return Ok(Vec::new()),
+    };
+    let mut out = Vec::new();
+    for e in entries.flatten() {
+        let p = e.path();
+        if p.extension().and_then(|s| s.to_str()) != Some("jsonl") { continue; }
+        let Ok(meta) = e.metadata() else { continue; };
+        let Ok(mtime) = meta.modified() else { continue; };
+        let Ok(d) = mtime.duration_since(std::time::UNIX_EPOCH) else { continue; };
+        let Some(stem) = p.file_stem().and_then(|s| s.to_str()) else { continue; };
+        out.push((stem.to_string(), d.as_millis() as i64));
+    }
+    Ok(out)
+}
+
 /// Find the most recently modified Claude Code session id for `cwd`.
 ///
 /// Claude stores per-project session transcripts at
@@ -248,8 +290,10 @@ fn check_command_on_path(name: String) -> bool {
 /// with `:`, `\`, and `/` replaced by `-`. The session id is the file stem.
 ///
 /// `since_ms` (Unix epoch milliseconds, optional) bounds the search to files
-/// modified at or after that time — used by the AgentTile restart flow to
-/// avoid latching onto a session from a previous tile that shared the cwd.
+/// modified at or after that time. **Note:** in multi-tile cwds this
+/// returns the most-recently-active sibling, not the caller's session — see
+/// `list_claude_sessions` + the `AgentTile` capture-on-boot pattern for the
+/// correct way to identify a tile's own session.
 #[tauri::command]
 fn find_recent_claude_session(cwd: String, since_ms: Option<i64>) -> Result<Option<String>, String> {
     let home = std::env::var_os("USERPROFILE")
@@ -835,6 +879,7 @@ pub fn run() {
             get_env_var,
             check_command_on_path,
             find_recent_claude_session,
+            list_claude_sessions,
             read_org_config,
             write_org_config,
             frontmatter::save_pasted_asset,

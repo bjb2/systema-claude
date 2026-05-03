@@ -96,6 +96,13 @@ export default function AgentTile({ tile, theme, focused, onFocus, onClose, onPt
     lastTurnId: null,
     maintenanceRanThisTurn: false,
   });
+  // Claude Code session id captured once, from the first jsonl this tile
+  // produces in `~/.claude/projects/<slug>/`. Distinct from
+  // sessionStateRef.current.sessionId (which is the React tile UUID, used
+  // by maintenance hooks). Read by restartWithResume so siblings sharing a
+  // cwd don't cause us to resume the wrong conversation.
+  const claudeSessionIdRef = useRef<string | null>(null);
+  const sessionPollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Latest hooks kept in a ref so the long-lived PTY listener always sees the current config
   // without re-running the init effect.
   const hooksRef = useRef<HookRule[]>(turnCompleteHooks ?? []);
@@ -117,6 +124,38 @@ export default function AgentTile({ tile, theme, focused, onFocus, onClose, onPt
   const isExecWorkerMode = false;
   const shouldBracketPaste = false;
 
+  // Poll the Claude transcript directory for this tile's session id.
+  // Captures the oldest jsonl that (a) was not in `baselineIds` at boot and
+  // (b) has mtime >= `sinceMs`. The combination — diff against baseline AND
+  // mtime floor — survives both pre-existing siblings and siblings spawned
+  // shortly after us. Resolves on capture or on poll-window expiry.
+  const startClaudeSessionCapture = (cwd: string, baselineIds: Set<string>, sinceMs: number) => {
+    if (sessionPollIntervalRef.current) clearInterval(sessionPollIntervalRef.current);
+    const start = Date.now();
+    const POLL_MS = 1500;
+    const MAX_MS = 5 * 60 * 1000; // give up after 5 minutes; fall back to --continue on restart
+    sessionPollIntervalRef.current = setInterval(async () => {
+      if (claudeSessionIdRef.current !== null || Date.now() - start > MAX_MS) {
+        if (sessionPollIntervalRef.current) {
+          clearInterval(sessionPollIntervalRef.current);
+          sessionPollIntervalRef.current = null;
+        }
+        return;
+      }
+      try {
+        const sessions = await invoke<[string, number][]>("list_claude_sessions", { cwd });
+        const candidates = sessions
+          .filter(([id, mtime]) => !baselineIds.has(id) && mtime >= sinceMs)
+          .sort((a, b) => a[1] - b[1]);
+        if (candidates.length > 0) {
+          claudeSessionIdRef.current = candidates[0][0];
+        }
+      } catch {
+        // Transient — keep polling.
+      }
+    }, POLL_MS);
+  };
+
   const restartWithResume = async () => {
     if (restarting) return;
     setRestarting(true);
@@ -129,12 +168,17 @@ export default function AgentTile({ tile, theme, focused, onFocus, onClose, onPt
 
     let sessionId: string | null = null;
     if (cmd === "claude") {
-      try {
-        sessionId = await invoke<string | null>("find_recent_claude_session", {
-          cwd,
-          sinceMs: startedAt,
-        });
-      } catch { sessionId = null; }
+      // Prefer the id we captured on boot — it's bound to this tile's PTY,
+      // unlike the discovery fallback below which can latch onto a sibling.
+      sessionId = claudeSessionIdRef.current;
+      if (!sessionId) {
+        try {
+          sessionId = await invoke<string | null>("find_recent_claude_session", {
+            cwd,
+            sinceMs: startedAt,
+          });
+        } catch { sessionId = null; }
+      }
     }
 
     if (oldPty !== null) {
@@ -163,11 +207,26 @@ export default function AgentTile({ tile, theme, focused, onFocus, onClose, onPt
       turnPhaseRef.current = "booting";
       plainOutputRef.current = "";
       inputBufferRef.current = "";
-      sessionStateRef.current.startedAt = Date.now();
+      const newStartedAt = Date.now();
+      sessionStateRef.current.startedAt = newStartedAt;
       breakReadyQuiescence();
       if (fitRef.current) {
         const dim = fitRef.current.proposeDimensions();
         if (dim) invoke("pty_resize", { ptyId: newId, rows: dim.rows, cols: dim.cols }).catch(() => {});
+      }
+      // If --resume <sid> was used, claude keeps writing to <sid>.jsonl — the
+      // cached id stays valid; no re-capture needed. If --continue was used
+      // (cached id was null), re-arm capture so the next restart can use a
+      // real --resume.
+      if (cmd === "claude" && claudeSessionIdRef.current === null) {
+        try {
+          const baseline = new Set(
+            (await invoke<[string, number][]>("list_claude_sessions", { cwd })).map(([id]) => id),
+          );
+          startClaudeSessionCapture(cwd, baseline, newStartedAt);
+        } catch {
+          // Capture is best-effort; failure leaves us where we were.
+        }
       }
     } catch (err) {
       setSpawnError(`restart failed: ${err}`);
@@ -461,7 +520,7 @@ export default function AgentTile({ tile, theme, focused, onFocus, onClose, onPt
       const cmd = tile.launchCmd ?? "claude";
       const args = tile.launchArgs ?? [];
       invoke<number>("pty_create", { shell: cmd, args, cwd })
-      .then(id => {
+      .then(async id => {
         ptyIdRef.current = id;
         onPtyReady?.(tile.id, id);
         const dim = fitAddon.proposeDimensions();
@@ -488,6 +547,22 @@ export default function AgentTile({ tile, theme, focused, onFocus, onClose, onPt
           // 15s fallback — fires if the ready-indicator watch below misses the prompt
           setTimeout(sendTaskMsg, 15000);
         }
+
+        // Capture this PTY's Claude session id once Claude writes its first
+        // transcript. Snapshot existing jsonls in the cwd as the baseline so
+        // we can identify which jsonl is *ours* (vs a sibling tile's). See
+        // [[claude-code-session-id-discovery]] for why mtime-based discovery
+        // alone is not enough in multi-tile cwds.
+        if (cmd === "claude") {
+          try {
+            const baseline = new Set(
+              (await invoke<[string, number][]>("list_claude_sessions", { cwd })).map(([sid]) => sid),
+            );
+            startClaudeSessionCapture(cwd, baseline, sessionStateRef.current.startedAt);
+          } catch {
+            // Capture is best-effort; restartWithResume falls back to legacy discovery.
+          }
+        }
       })
       .catch(err => {
         console.error("AgentTile spawn error:", err);
@@ -507,6 +582,10 @@ export default function AgentTile({ tile, theme, focused, onFocus, onClose, onPt
       if (quiescenceTimerRef.current) {
         clearTimeout(quiescenceTimerRef.current);
         quiescenceTimerRef.current = null;
+      }
+      if (sessionPollIntervalRef.current) {
+        clearInterval(sessionPollIntervalRef.current);
+        sessionPollIntervalRef.current = null;
       }
       inputBufferRef.current = "";
       plainOutputRef.current = "";
