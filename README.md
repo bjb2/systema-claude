@@ -1,68 +1,77 @@
 # systema-claude
 
-A portable, file-based, agent-native workspace. Single binary, single window, your files, your agent.
+A local, file-based workspace for working alongside an AI agent. Your files stay on your disk. The agent reads and writes them through the same window you do. Continuity lives in the folder, not in a vendor's memory feature.
 
-## What systema-claude is *not*
+Built as a single desktop binary (Tauri + Rust) with a TUI-style document browser, a knowledge graph view, a code editor, a routines runner, and a multi-agent swarm pane. Comes with a small seed workspace, a verification harness for the file conventions it uses, and example configs for Claude and Codex CLIs.
 
-Read this first. The space of "tools that put an LLM next to some files" is crowded, and most of those tools are not this.
+> Status: pre-v0.1.0. The orgd daemon and Tauri app are forked, build cleanly, and run against the bundled seed. Installer (MSI/NSIS) is produced. First public test in progress; rough edges welcome.
 
-- **Not a chat interface.** There is no thread. The substrate is files; the agent reads and writes them. Conversation is incidental.
-- **Not a coding IDE.** Code editing is included because some files are code; that is not the point. The point is the workspace.
-- **Not a note-taking app with AI bolted on.** The agent is a tenant, not a feature button. Architecture assumes the agent will operate on the workspace whether you are watching or not.
-- **Not a workflow platform.** Routines exist, but they are standing instructions to a tenant — not orchestrated nodes in a DAG product.
-- **Not a memory feature.** Continuity lives in the files, not in a vendor's recall system. If your tools disappeared tomorrow, the workspace would still read linearly.
-- **Not a federation client.** Single machine. Architectural hooks are present so a future you can build outward; v1 does not.
-- **Not a stepping stone.** systema-claude is its own school, not preparation for something more articulated. See `docs/charter.md`.
+---
 
-If any of those negations made you think "but I want exactly that thing," you want a different tool. Pick one of those; they are good.
+## Try it
 
-## What it is
+1. **Download** the latest installer from [Releases](https://github.com/bjb2/systema-claude/releases) (Windows, MSI or NSIS).
+2. **Install + run.** The first launch opens the bundled seed workspace.
+3. **Open `tasks/welcome.md`** and bring your agent of choice (Claude by default; the `claude` CLI from Anthropic must be on your `PATH`). The welcome task is the agent's own onboarding script — it interviews you for ~45 minutes and writes your voice, your projects, and the principles you actually live by into `context/`. You can pause anywhere.
 
-A Tauri desktop binary that runs a local Rust daemon (`orgd`) over `127.0.0.1` and presents a TUI-style document browser. The agent of your choice (Claude by default; Codex example included) operates on the workspace through the same file substrate you operate on. Routines run on a cron loop. The frontmatter on every file is the single source of truth — graph, dashboards, search, and agent context all derive from it.
+The welcome task is itself a worked example of how the workspace expects you to operate: a file in the substrate, read by the agent, edited collaboratively, validated by a harness, archived when done.
 
-The verification harness is the central feature: every contract the workspace ships (frontmatter schema, routine-step output shape, agent invocation envelope) has a tiny test runner next to it. Not crypto-grade — just enough to make a divergence visible to one user before it travels.
+If you'd rather hack on systema-claude itself, clone the repo and read `docs/hacking.md` (TODO).
 
-## Status
+## What you'll see
 
-**Pre-v0.1.0 — scaffold only.** The repo is being spun off from a parent workspace. Source code (orgd daemon, Tauri shell, seed org, verification harness) is being forked in over the next several phases. See `docs/roadmap.md` (TODO).
+(Screenshots from the v0.1.0 build coming once the seed UI settles.)
 
-Until v0.1.0:
-- The `orgd/` and `app/` directories are empty placeholders.
-- The seed org under `seed/` is empty.
-- No installer is published.
+A left-rail navigator with Dashboard / Tasks / Knowledge / Inbox / Graph / Code / Swarm / Routines / Settings. The dashboard summarises your active tasks, blocked items, knowledge entries, and inbox. Tasks shows your task files grouped by project. Knowledge is your distilled-insights library, also grouped by project tag. Graph visualises the wikilink connections between everything in the workspace. Code is a CodeMirror 6 editor that opens any file in the workspace and saves through the daemon. Swarm spawns up to six agent terminals in a slot grid, each with its own working directory and prompt. Routines is a YAML editor + drag-connect Flow editor for the cron-driven background runner.
 
-## Install + first run (planned shape, not yet shipped)
+A right-side terminal toggles open with backtick.
 
-Download the binary for your platform from Releases. Run it. There is no `cargo install`, no `npm install`, no dev server to keep running. The seed workspace is just plain folders on disk — no symlinks, junctions, or special filesystem setup required.
-
-The first launch opens the bundled seed workspace. **Your first task is `tasks/welcome.md`** — open it. The agent of your choice (Claude by default) will read it and run a short interview to extract your voice, your projects, and the principles you actually live by, populating `context/voice.md` / `context/projects.md` / `context/current-state.md` as the artifact. Allow ~45 minutes; you can pause anywhere.
-
-The welcome task is itself a worked example of how systema-claude expects you to operate: a file in the workspace, read by the agent, edited collaboratively, validated by a harness, then archived when complete. You will have used every primitive the workspace ships with before you finish onboarding.
-
-If you want to hack on systema-claude itself rather than use it as a workspace, see `docs/hacking.md` (TODO).
-
-## Screenshots
-
-_Coming once the v0.1.0 binary builds and the seed UI is finalized. Existing org-viewer screenshots from the parent project show extra sidebar items (Radio, Todoist, Spotify, Assets) that systema-claude drops, so they are not representative of the install experience and will be reshot from a fresh seed run._
+Themes cycle with `t`. Search palette is `Ctrl+K`. Most views have keyboard shortcuts (numbers and letters from the sidebar).
 
 ## Agents
 
 Two example configs ship in `examples/agents/`:
 
-- `claude.json` — default. Uses the `claude` CLI.
+- `claude.json` — default. Uses the `claude` CLI from Anthropic.
 - `codex.json` — alternative. Uses the `codex` CLI.
 
-Bring your own: `org.config.json` accepts arbitrary `launchCmd` / `printArgs`. Other agents (Gemini, aider, opencode, cursor-agent) are not pre-configured — the BYO mechanism is general; we just have not validated configs we do not personally use.
+Bring your own: `org.config.json` in the workspace root accepts arbitrary `launchCmd` and `printArgs`. Other agents (Gemini, aider, opencode, cursor-agent, ollama) work fine — we just don't ship configs we haven't personally validated.
 
-## Philosophy
+## How the pieces fit
 
-The naming is load-bearing. systema-claude takes its name from the martial art (Systema), whose discipline is *principles over prescriptions, effectiveness-checking over technique-collecting*. What that commits the project to:
+Three things ship together:
 
-- **No katas.** No prescribed routine templates, no prescribed knowledge taxonomies, no prescribed agent configurations.
-- **Seed-as-blank-room, not seed-as-template.** Equipment present and labeled (frontmatter validator, harness runner, empty `routines/`, empty `knowledge/`). You develop your own practice on top.
-- **The verification harness is the partner.** Tests substitute for the counterparty a single-user workspace lacks by definition.
+- **`systema-claude.exe`** — the Tauri desktop shell. The window you interact with.
+- **`orgd`** — a local Rust daemon, bundled inside the .exe. It owns the file watcher, the document index, agent process management, the routine runner, and an HTTP+WS API on `127.0.0.1:<ephemeral>` that the shell talks to. You don't run it directly; the shell launches it on startup.
+- **The seed workspace** — `CLAUDE.md` + `context/` + empty `tasks/` / `inbox/` / `knowledge/` / `routines/` + `examples/`. The first launch opens this.
 
-Full charter at `docs/charter.md`.
+The seed is just plain folders on disk. No symlinks, junctions, or special filesystem setup required.
+
+## What systema-claude is *not*
+
+If you've used a few of these and want to know which corner of the design space this lives in:
+
+- **Not a chat interface.** There's no thread. The substrate is files; the agent reads and writes them. Conversation is incidental.
+- **Not a coding IDE.** Code editing is included because some files are code; the point is the workspace, not the syntax highlighting.
+- **Not a note-taking app with AI bolted on.** The agent is a tenant of the workspace, not a feature button. The architecture assumes the agent will operate on the workspace whether you're watching or not.
+- **Not a workflow platform.** Routines exist, but they're standing instructions to the agent — not orchestrated nodes in a DAG product.
+- **Not a memory feature.** Continuity lives in the files. If your tools disappeared tomorrow, the workspace would still read linearly.
+- **Not a federation client.** Single machine. Architectural hooks are reserved for later, but v1 is just you.
+- **Not a stepping stone.** systema-claude is its own school, not preparation for something more articulated. See `docs/charter.md`.
+
+If any of those negations made you think "but I want exactly that thing," pick a different tool. There are good ones.
+
+## The verification harness
+
+The harness is the central feature, in the sense that it's the discipline the project tries to teach by structure. Every contract the workspace ships with — frontmatter schema, routine-step output shape, agent invocation envelope — comes with a tiny test runner next to it. Not crypto-grade; just enough to make a divergence visible to one user before it travels to another user, or to a future you who has forgotten the original assumptions.
+
+The reference implementation is `examples/harness/validate-frontmatter.py`. It walks the workspace and reports any markdown file with missing required frontmatter fields. It self-tests against a pair of valid + invalid fixtures. The pattern (a contract, a passing example, a failing example, a runner) is what you should copy when you write your own contracts.
+
+## Philosophy (one paragraph)
+
+systema-claude is named for the martial art Systema, whose discipline is **principles over prescriptions, effectiveness-checking over technique-collecting**. The seed ships no prescribed routine templates, no prescribed knowledge taxonomy, no prescribed agent configurations. It ships equipment, labeled. You develop your own practice. The harness substitutes for the second pair of eyes a single-user workspace lacks by definition.
+
+Full charter (including why "no graduation path," what disagreement-as-protocol means in practice, and the architecture-inscribes-profile remedies the project tries to follow) is at `docs/charter.md`.
 
 ## License
 
@@ -70,4 +79,4 @@ MIT. See `LICENSE`.
 
 ## Lineage
 
-Spun off from a private parent workspace authored by Bryan Bartley with Claude Opus 4.7. The parent contains personal content (knowledge, projects, voice work) that does not migrate. systema-claude is the public, no-personal-content distillation — the patterns the parent learned, restated for an audience of one (you).
+Spun off from a private parent workspace authored by Bryan Bartley with Claude Opus 4.7. The parent contains personal content — knowledge, projects, voice work — that does not migrate. systema-claude is the public, no-personal-content distillation: the patterns the parent learned, restated for an audience of one (you).
