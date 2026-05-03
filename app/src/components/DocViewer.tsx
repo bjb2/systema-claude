@@ -23,6 +23,7 @@ interface Props {
   onDismiss?: () => void;
   onOpenUrl?: (url: string) => void;
   onNavigate?: (doc: OrgDocument) => void;
+  onSpawnSwarm?: () => void;
 }
 
 const TASK_STATUSES = [
@@ -217,6 +218,7 @@ export default function DocViewer({
   onDismiss,
   onOpenUrl,
   onNavigate,
+  onSpawnSwarm,
 }: Props) {
   const isTask = doc.type === "task";
   const [body, setBody] = useState<string>("");
@@ -328,16 +330,6 @@ export default function DocViewer({
     [doc.path, refreshRelations],
   );
 
-  // ------ Header status pill: cycle through statuses on click ------
-  const cycleStatus = useCallback(() => {
-    const cur = doc.status ?? "active";
-    const i = TASK_STATUSES.indexOf(cur);
-    const next = TASK_STATUSES[(i + 1) % TASK_STATUSES.length];
-    const patch: Record<string, unknown> = { status: next };
-    if (next === "complete") patch.completed = today();
-    else patch.completed = null;
-    void patchFrontmatter(patch);
-  }, [doc.status, patchFrontmatter]);
 
   const ready = relations?.ready ?? true;
   const synthesizeDisabled = synthesized || synthesizeRunning;
@@ -407,27 +399,31 @@ export default function DocViewer({
           )}
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          {isTask ? (
-            <button
-              onClick={cycleStatus}
-              className="text-xs px-2 py-0.5 rounded cursor-pointer"
-              style={{
-                background: theme.accentMuted,
-                color: theme.accent,
-                border: "none",
-              }}
-              title="Click to cycle status"
-            >
-              {doc.status ?? "active"}
-            </button>
-          ) : doc.status ? (
+          {(isTask || doc.status) && (
             <span
               className="text-xs px-2 py-0.5 rounded"
               style={{ background: theme.accentMuted, color: theme.accent }}
+              title="Status — change in the properties panel below"
             >
-              {doc.status}
+              {doc.status ?? "active"}
             </span>
-          ) : null}
+          )}
+          {isTask && onSpawnSwarm && (
+            <button
+              onClick={onSpawnSwarm}
+              className="text-xs px-2 py-0.5 rounded cursor-pointer flex items-center gap-1"
+              style={{
+                background: theme.accent,
+                color: theme.bg,
+                border: "none",
+                fontWeight: 500,
+              }}
+              title="Open this task in a swarm tile (sets status to active)"
+            >
+              <span style={{ fontSize: 11 }}>❯</span>
+              <span>Send to swarm</span>
+            </button>
+          )}
           <span
             className="text-xs"
             style={{

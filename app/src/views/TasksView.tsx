@@ -1040,6 +1040,17 @@ acceptance-criteria: null
             }}
             onOpenUrl={onOpenUrl}
             onNavigate={setSelectedDoc}
+            onSpawnSwarm={
+              onSpawnClaude && selectedDoc.type === "task"
+                ? () => {
+                    const agentId =
+                      typeof selectedDoc.frontmatter?.agent === "string"
+                        ? selectedDoc.frontmatter.agent
+                        : undefined;
+                    onSpawnClaude(selectedDoc.path, selectedDoc.title, undefined, agentId);
+                  }
+                : undefined
+            }
           />
         ) : (
           <div
