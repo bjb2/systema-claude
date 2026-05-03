@@ -36,7 +36,7 @@
     }
   },
   "bundle": {
-    "active": true,
+    "active": false,
     "targets": "all",
     "externalBin": ["binaries/orgd"],
     "icon": [

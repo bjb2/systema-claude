@@ -10,13 +10,16 @@ Built as a single desktop binary (Tauri + Rust) with a TUI-style document browse
 
 ## Try it
 
-1. **Download** the latest installer from [Releases](https://github.com/bjb2/systema-claude/releases) (Windows, MSI or NSIS).
-2. **Install + run.** The first launch opens the bundled seed workspace.
-3. **Open `tasks/welcome.md`** and bring your agent of choice (Claude by default; the `claude` CLI from Anthropic must be on your `PATH`). The welcome task is the agent's own onboarding script — it interviews you for ~45 minutes and writes your voice, your projects, and the principles you actually live by into `context/`. You can pause anywhere.
+1. **Download** `systema-claude-v0.1.x.zip` from [Releases](https://github.com/bjb2/systema-claude/releases).
+2. **Extract** the zip to wherever you want your workspace to live (e.g. `C:\Users\you\Documents\my-workspace\`). The folder you extracted into **is your workspace** — the contents are yours to edit, rename, and grow.
+3. **Run** `systema-claude.exe` from inside that folder. No installer, no Program Files, no admin prompt — the binary lives next to your files.
+4. **Open `tasks/welcome.md`** and bring your agent of choice (Claude by default; the `claude` CLI from Anthropic must be on your `PATH`). The welcome task is the agent's own onboarding script — it interviews you for ~45 minutes and writes your voice, your projects, and the principles you actually live by into `context/`. You can pause anywhere.
 
 The welcome task is itself a worked example of how the workspace expects you to operate: a file in the substrate, read by the agent, edited collaboratively, validated by a harness, archived when done.
 
-If you'd rather hack on systema-claude itself, clone the repo and read `docs/hacking.md` (TODO).
+If the agent CLI isn't installed, the app shows a banner at the top — install whichever you'll use (`claude` or `codex`), then restart. The bundled `org.config.json` accepts arbitrary `launchCmd` / `printArgs` if you want to point at a different agent.
+
+If you'd rather hack on systema-claude itself, clone the repo and see "Build from source" below.
 
 ## What you'll see
 
@@ -94,7 +97,7 @@ Full charter (including why "no graduation path," what disagreement-as-protocol 
 
 ## Build from source
 
-If you'd rather not run an unsigned binary (Windows Defender will flag the download until the project gets a code-signing certificate), build it yourself:
+If you'd rather not run an unsigned binary (Windows Defender will flag the download until the project gets a code-signing certificate), build it yourself.
 
 **Prerequisites**
 
@@ -109,26 +112,18 @@ If you'd rather not run an unsigned binary (Windows Defender will flag the downl
 git clone https://github.com/bjb2/systema-claude.git
 cd systema-claude/app
 npm install
-npx tauri build
+npm run pack
 ```
 
-The build runs in two steps: first `cargo build --release` for the orgd sidecar daemon (script: `app/scripts/build-orgd.mjs`), then the Tauri build for the desktop shell. First build takes 5–10 minutes depending on your machine.
+The pack pipeline runs in three steps: `cargo build --release` for the `orgd` sidecar daemon, the Tauri release build for the desktop shell, then `scripts/pack-distribution.mjs` assembles the redistributable zip. First build takes 5–10 minutes.
 
-**Outputs land at:**
+**Outputs land at `dist/`:**
 
-- `app/src-tauri/target/release/systema-claude-app.exe` — the standalone binary you built yourself.
-- `app/src-tauri/target/release/bundle/msi/systema-claude_0.1.0_x64_en-US.msi` — your own MSI installer.
-- `app/src-tauri/target/release/bundle/nsis/systema-claude_0.1.0_x64-setup.exe` — your own NSIS installer.
+- `dist/systema-claude-v0.1.0/` — the unpacked tree (drop a copy wherever you want your workspace).
+- `dist/systema-claude-v0.1.0.zip` — same tree, zipped for distribution.
+- `dist/systema-claude.exe` — the loose binary, in case you already have a workspace and just want to update the exe.
 
-The binary you produce is identical to the binary in the published release except for the build timestamp. It is still unsigned (signing requires a code-signing certificate from a CA — outside the scope of this project), but you have full provenance: you built it from the source you can read.
-
-**Run against the bundled seed:**
-
-Copy the built `systema-claude-app.exe` to `seed/` and double-click it (the daemon will pick `seed/` as the workspace because that's where it finds `CLAUDE.md`). Or set `ORG_ROOT` explicitly:
-
-```bash
-ORG_ROOT="C:/path/to/your/workspace" ./app/src-tauri/target/release/systema-claude-app.exe
-```
+The binary you produce is identical to the published release except for the build timestamp. Still unsigned (signing requires a code-signing certificate from a CA — outside the scope of this project), but you have full provenance: you built it from source you can read.
 
 **Tests:**
 

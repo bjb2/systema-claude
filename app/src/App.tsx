@@ -88,6 +88,8 @@ export default function App() {
     try { localStorage.setItem("swarmTiles", JSON.stringify(swarmTiles)); } catch {}
   }, [swarmTiles]);
   const [agentRegistry, setAgentRegistry] = useState<AgentRegistry | null>(null);
+  const [missingAgents, setMissingAgents] = useState<{ id: string; cmd: string; label: string }[]>([]);
+  const [agentBannerDismissed, setAgentBannerDismissed] = useState(false);
 
   const theme = themes[themeIdx];
 
@@ -121,6 +123,31 @@ export default function App() {
   const handleRegistryChange = useCallback((registry: AgentRegistry) => {
     setAgentRegistry(registry);
   }, []);
+
+  // Probe each configured agent's launchCmd against PATH. If any are missing,
+  // surface a one-shot banner so the user isn't confused when "+ Claude" silently
+  // fails because the CLI isn't installed.
+  useEffect(() => {
+    if (!agentRegistry) return;
+    let cancelled = false;
+    (async () => {
+      const entries = Object.entries(agentRegistry.agents);
+      const checks = await Promise.all(
+        entries.map(async ([id, cfg]) => {
+          const cmd = cfg.launchCmd ?? id;
+          try {
+            const found = await invoke<boolean>("check_command_on_path", { name: cmd });
+            return { id, cmd, label: cfg.label ?? id, found };
+          } catch {
+            return { id, cmd, label: cfg.label ?? id, found: false };
+          }
+        }),
+      );
+      if (cancelled) return;
+      setMissingAgents(checks.filter(c => !c.found).map(({ id, cmd, label }) => ({ id, cmd, label })));
+    })();
+    return () => { cancelled = true; };
+  }, [agentRegistry]);
 
   useEffect(() => {
     loadDocs();
@@ -306,6 +333,46 @@ export default function App() {
         />
       )}
       <Header theme={theme} view={view} orgRoot={orgRoot} />
+      {missingAgents.length > 0 && !agentBannerDismissed && (
+        <div
+          style={{
+            background: theme.warning ?? "#a85f00",
+            color: theme.bg,
+            padding: "8px 16px",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            fontSize: 13,
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ flex: 1 }}>
+            <strong>Missing agent CLI{missingAgents.length > 1 ? "s" : ""}:</strong>{" "}
+            {missingAgents.map(a => `${a.label} (${a.cmd})`).join(", ")} not found on PATH.
+            Spawn buttons for {missingAgents.length > 1 ? "these" : "this"} won't launch a process.{" "}
+            Install the CLI{missingAgents.length > 1 ? "s" : ""}, or edit{" "}
+            <code style={{ background: "rgba(0,0,0,0.15)", padding: "1px 4px", borderRadius: 2 }}>
+              org.config.json
+            </code>{" "}
+            to point at a different command.
+          </span>
+          <button
+            onClick={() => setAgentBannerDismissed(true)}
+            style={{
+              background: "rgba(0,0,0,0.15)",
+              color: theme.bg,
+              border: "none",
+              padding: "2px 8px",
+              borderRadius: 3,
+              cursor: "pointer",
+              fontSize: 12,
+            }}
+            title="Dismiss for this session"
+          >
+            dismiss
+          </button>
+        </div>
+      )}
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           theme={theme}

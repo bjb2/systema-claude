@@ -7,6 +7,7 @@
     "dev": "vite",
     "build:orgd": "node scripts/build-orgd.mjs",
     "build": "npm run build:orgd && tsc && vite build",
+    "pack": "npx tauri build && node ../scripts/pack-distribution.mjs",
     "preview": "vite preview",
     "tauri": "tauri"
   },

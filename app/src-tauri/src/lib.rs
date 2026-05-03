@@ -218,6 +218,29 @@ fn get_env_var(name: String) -> Result<String, String> {
     std::env::var(&name).map_err(|_| format!("env var {} not set", name))
 }
 
+/// Check whether `name` resolves to an executable on PATH.
+///
+/// Used by the frontend to detect missing agent CLIs (claude, codex, etc.)
+/// on first run. Returns true if found, false otherwise. Never errors —
+/// "not found" is a valid outcome, not a failure mode.
+#[tauri::command]
+fn check_command_on_path(name: String) -> bool {
+    // Reject anything that looks like a path or contains shell metacharacters;
+    // we only want to probe simple command names.
+    if name.is_empty() || name.contains(['/', '\\', ' ', '"', '\'', ';', '&', '|']) {
+        return false;
+    }
+
+    let probe = if cfg!(windows) { "where" } else { "which" };
+    std::process::Command::new(probe)
+        .arg(&name)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
 /// Find the most recently modified Claude Code session id for `cwd`.
 ///
 /// Claude stores per-project session transcripts at
@@ -810,6 +833,7 @@ pub fn run() {
             log_frontend_error,
             open_external_url,
             get_env_var,
+            check_command_on_path,
             find_recent_claude_session,
             read_org_config,
             write_org_config,
