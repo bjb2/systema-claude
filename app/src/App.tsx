@@ -47,10 +47,14 @@ export default function App() {
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [terminalWidth, setTerminalWidth] = useState(480);
   const termDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
-  // Always start with a fresh swarm. Persisting tile metadata across restarts
-  // doesn't preserve the PTYs (they die with the app), so restoring just respawns
-  // fresh agents and re-fires their prompts — exactly the "old session kicks off
-  // again" failure mode. Drop the legacy entry so it doesn't grow stale.
+  // Tile metadata persists across org-viewer restarts. PTYs themselves live in
+  // the detached `orgd` daemon (CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS) so
+  // they survive when the WebView2 host dies — the whole point of the bridge
+  // architecture. On mount we reconcile the persisted `ptyId` fields against
+  // the live PTY set from `pty_list`; tiles whose PTY is still alive reattach
+  // (AgentTile.tsx handles the `tile.ptyId` branch — pty_buffer + replay).
+  // Tiles whose PTY is gone (orgd restart, child exited, manual taskkill) get
+  // `ptyId` nulled here so the spawn path runs instead.
   const [swarmTiles, setSwarmTiles] = useState<TileConfig[]>(() => {
     try {
       const raw = localStorage.getItem("swarmTiles");
@@ -156,6 +160,38 @@ export default function App() {
     const unlisten = listen("org-changed", () => { loadDocs(); loadAgentRegistry(); });
     return () => { unlisten.then(f => f()); };
   }, [loadDocs, loadOrgRoot, loadAgentRegistry]);
+
+  // Reconcile persisted `swarmTiles[].ptyId` against the live PTY set in orgd.
+  // Runs once on mount, before any AgentTile picks up its `tile.ptyId` and
+  // attempts to reattach via `pty_buffer`. Stale ids (orgd restarted, child
+  // exited, manual taskkill) get nulled so the tile re-spawns instead of
+  // silently writing into a dead PTY.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const live = await invoke<Array<{ pty_id: number }>>("pty_list");
+        if (cancelled) return;
+        const liveIds = new Set(live.map(p => p.pty_id));
+        setSwarmTiles(prev => {
+          let changed = false;
+          const next = prev.map(t => {
+            if (t.ptyId != null && !liveIds.has(t.ptyId)) {
+              changed = true;
+              return { ...t, ptyId: undefined };
+            }
+            return t;
+          });
+          return changed ? next : prev;
+        });
+      } catch {
+        // pty_list unavailable (older orgd, transient error). Leave persisted
+        // ptyIds alone — AgentTile's reattach path tolerates a stale id by
+        // showing an empty terminal, which is recoverable via Restart.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

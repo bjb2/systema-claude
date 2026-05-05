@@ -80,6 +80,13 @@ export default function AgentTile({ tile, theme, focused, onFocus, onClose, onPt
   const [workerBusy, setWorkerBusy] = useState(false);
   const [confirmRestart, setConfirmRestart] = useState(false);
   const [restarting, setRestarting] = useState(false);
+  // True when orgd has returned `503 BackpressureFull` for a recent pty_write,
+  // meaning the per-PTY writer queue is full because the child process has
+  // stopped draining stdin (mid-tool-call stall, hung subprocess, etc.). The
+  // badge surfaces this so the user knows their keystrokes are being dropped
+  // instead of mysteriously vanishing — and can decide to restart the tile.
+  const [stalled, setStalled] = useState(false);
+  const stalledRef = useRef(false);
   const kaomoji = useAgentKaomoji(!!(tile.taskPath || tile.promptOverride));
   const sendTaskMsgRef = useRef<(() => void) | null>(null);
   const inputBufferRef = useRef("");
@@ -247,12 +254,35 @@ export default function AgentTile({ tile, theme, focused, onFocus, onClose, onPt
     onClose(tile.id);
   };
 
+  // Wraps `pty_write` so a 503 BackpressureFull from orgd flips the stalled
+  // badge, and a subsequent successful write clears it. Without this, the
+  // existing `.catch(() => {})` calls swallow the wedge silently and the
+  // user sees keystrokes go nowhere.
+  const writePty = (ptyId: number, data: string): Promise<void> => {
+    return invoke<void>("pty_write", { ptyId, data })
+      .then(() => {
+        if (stalledRef.current) {
+          stalledRef.current = false;
+          setStalled(false);
+        }
+      })
+      .catch((e: unknown) => {
+        const msg = typeof e === "string" ? e : (e as Error)?.message ?? String(e);
+        if (msg.includes("BackpressureFull") || msg.includes("503")) {
+          if (!stalledRef.current) {
+            stalledRef.current = true;
+            setStalled(true);
+          }
+        }
+      });
+  };
+
   const injectPrompt = (ptyId: number, text: string) => {
     const data = shouldBracketPaste ? `\x1b[200~${text}\x1b[201~` : text;
     const submitDelayMs = shouldBracketPaste ? 120 : 250;
-    return invoke("pty_write", { ptyId, data })
+    return writePty(ptyId, data)
       .then(() => new Promise(resolve => setTimeout(resolve, submitDelayMs)))
-      .then(() => invoke("pty_write", { ptyId, data: "\r\n" }));
+      .then(() => writePty(ptyId, "\r\n"));
   };
 
   const runWorkerMaintenance = () => {
@@ -508,7 +538,7 @@ export default function AgentTile({ tile, theme, focused, onFocus, onClose, onPt
         const pid = ptyIdRef.current;
         if (pid === null) return;
         consumeUserInput(data);
-        invoke("pty_write", { ptyId: pid, data }).catch(() => {});
+        writePty(pid, data);
       });
       turnPhaseRef.current = "idle";
     } else {
@@ -530,7 +560,7 @@ export default function AgentTile({ tile, theme, focused, onFocus, onClose, onPt
           const pid = ptyIdRef.current;
           if (pid === null) return;
           consumeUserInput(data);
-          invoke("pty_write", { ptyId: pid, data }).catch(() => {});
+          writePty(pid, data);
         });
 
         if (tile.promptOverride || tile.taskPath) {
@@ -879,6 +909,19 @@ export default function AgentTile({ tile, theme, focused, onFocus, onClose, onPt
             padding: "1px 4px", flexShrink: 0, letterSpacing: "0.03em",
           }}>
             [{tile.agentLabel}]
+          </span>
+        )}
+        {stalled && (
+          <span
+            style={{
+              fontSize: 9, color: theme.error, background: theme.bgSecondary,
+              border: `1px solid ${theme.error}`, borderRadius: 3,
+              padding: "1px 4px", flexShrink: 0, letterSpacing: "0.03em",
+              fontWeight: 600,
+            }}
+            title="Writer queue full — child not draining stdin. Use restart (↻) if it doesn't recover."
+          >
+            STALLED
           </span>
         )}
         {!isExecWorkerMode && (

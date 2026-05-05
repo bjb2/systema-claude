@@ -71,3 +71,15 @@ pub async fn pty_kill(
 ) -> Result<(), String> {
     client.delete(&format!("/v1/pty/{pty_id}")).await
 }
+
+/// Lists the PTYs orgd currently has alive. Used on org-viewer mount to
+/// reconcile localStorage tile state — any tile whose persisted `ptyId`
+/// is missing from this list has been killed (orgd restart, manual
+/// taskkill, Claude exited) and should respawn instead of trying to
+/// reattach with `pty_buffer`.
+#[tauri::command]
+pub async fn pty_list(
+    client: tauri::State<'_, OrgdClient>,
+) -> Result<serde_json::Value, String> {
+    client.get::<serde_json::Value>("/v1/pty").await
+}

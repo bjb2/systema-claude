@@ -22,7 +22,7 @@ use crate::worker::{StartRequest, StartResponse, WorkerStatus};
 
 pub fn routes(state: Arc<AppState>) -> Router {
     let protected = Router::new()
-        .route("/v1/pty", post(pty_create))
+        .route("/v1/pty", post(pty_create).get(pty_list))
         .route("/v1/pty/:id/buffer", get(pty_buffer))
         .route("/v1/pty/:id/write", post(pty_write))
         .route("/v1/pty/:id/resize", post(pty_resize))
@@ -89,7 +89,18 @@ async fn pty_buffer(
     State(state): State<Arc<AppState>>,
     Path(id): Path<u32>,
 ) -> Json<BufferResponse> {
-    Json(BufferResponse { data: state.ptys().buffer(id) })
+    // Cloning a 200KB string is microseconds, but we still hop to the
+    // blocking pool so the buffer mutex (also touched by the reader thread
+    // on every output append) never contends with a tokio worker.
+    let ptys = state.ptys().clone();
+    let data = tokio::task::spawn_blocking(move || ptys.buffer(id))
+        .await
+        .unwrap_or_default();
+    Json(BufferResponse { data })
+}
+
+async fn pty_list(State(state): State<Arc<AppState>>) -> Json<Vec<crate::pty::PtyInfo>> {
+    Json(state.ptys().list())
 }
 
 #[derive(Deserialize)]
@@ -100,13 +111,22 @@ async fn pty_write(
     Path(id): Path<u32>,
     Json(req): Json<WriteRequest>,
 ) -> Result<(), (axum::http::StatusCode, String)> {
-    // write_all on the PTY master is synchronous and can block on a wedged
-    // ConPTY pipe; offload to spawn_blocking so the tokio runtime stays free.
-    let ptys = state.ptys().clone();
-    tokio::task::spawn_blocking(move || ptys.write(id, &req.data))
-        .await
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e))
+    // try_send on the bounded writer channel is non-blocking. When the
+    // channel is full (writer thread parked on a wedged ConPTY pipe),
+    // return 503 BackpressureFull so the frontend can flag the tile
+    // instead of silently queueing more failed writes.
+    use crate::pty::WriteOutcome;
+    match state.ptys().write(id, &req.data) {
+        WriteOutcome::Ok => Ok(()),
+        WriteOutcome::NotFound => Err((
+            axum::http::StatusCode::NOT_FOUND,
+            "pty not found".to_string(),
+        )),
+        WriteOutcome::Backpressure => Err((
+            axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            "BackpressureFull".to_string(),
+        )),
+    }
 }
 
 #[derive(Deserialize)]

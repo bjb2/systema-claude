@@ -157,18 +157,29 @@ fn spawn_detached(exe: &PathBuf, org_root: &std::path::Path) -> Result<std::proc
 /// the webview under its existing Tauri event name (pty-output,
 /// worker-output, worker-exit) with the same snake_case payload shape
 /// the frontend already consumes. Auto-reconnects on transport failure.
+///
+/// Every emit is gated on `crate::WINDOW_ALIVE`. A stream of `app.emit`
+/// calls during webview teardown is the canonical `0x8007139F` flood
+/// trigger documented in `knowledge/tools/tauri-webview2-native-crash-diagnosis.md`
+/// — without the gate the pump can drive msedge.dll into an internal
+/// CHECK and crash the browser process while orgd happily keeps producing
+/// events.
 pub fn spawn_event_pump(client: OrgdClient, app: AppHandle) {
+    use std::sync::atomic::Ordering;
     tauri::async_runtime::spawn(async move {
         loop {
+            if !crate::WINDOW_ALIVE.load(Ordering::Relaxed) { break; }
             if let Err(e) = run_pump(&client, &app).await {
                 log::warn!("orgd event pump disconnected: {e}");
             }
+            if !crate::WINDOW_ALIVE.load(Ordering::Relaxed) { break; }
             tokio::time::sleep(Duration::from_millis(750)).await;
         }
     });
 }
 
 async fn run_pump(client: &OrgdClient, app: &AppHandle) -> Result<(), String> {
+    use std::sync::atomic::Ordering;
     let url = format!(
         "ws://127.0.0.1:{}/v1/events?token={}",
         client.info.port, client.info.token
@@ -179,6 +190,7 @@ async fn run_pump(client: &OrgdClient, app: &AppHandle) -> Result<(), String> {
     let (mut sink, mut stream) = ws.split();
 
     while let Some(msg) = stream.next().await {
+        if !crate::WINDOW_ALIVE.load(Ordering::Relaxed) { break; }
         let msg = msg.map_err(|e| e.to_string())?;
         match msg {
             Message::Text(text) => {
@@ -186,6 +198,7 @@ async fn run_pump(client: &OrgdClient, app: &AppHandle) -> Result<(), String> {
                 let Some(kind) = value.get("type").and_then(|v| v.as_str()) else { continue };
                 let mut payload = value.clone();
                 if let Some(obj) = payload.as_object_mut() { obj.remove("type"); }
+                if !crate::WINDOW_ALIVE.load(Ordering::Relaxed) { break; }
                 match kind {
                     "pty-output" | "pty-exit" | "worker-output" | "worker-exit" => {
                         let _ = app.emit(kind, payload);
